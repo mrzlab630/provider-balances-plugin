@@ -102,6 +102,9 @@ function render() {
     } else value.textContent = '—';
     if (provider.balance) value.title = 'Последний успешный запрос: ' + new Date(provider.balance.checked_at).toLocaleString('ru-RU');
     content.append(value);
+    if (provider.api_type === 'anymodel' && provider.balance?.tokens !== undefined) {
+      content.append(element('p', 'token-balance', new Intl.NumberFormat('ru-RU').format(provider.balance.tokens) + ' токенов'));
+    }
     const error = refreshErrors.get(provider.id) || provider.last_error;
     if (error && !busy) {
       const message = element('p', 'error', error);
@@ -133,20 +136,24 @@ function render() {
 }
 
 function authHint() {
+  const anymodel = $('api-type').value === 'anymodel';
   const cookie = $('auth-mode').value === 'cookie';
   const auto = !cookie && $('auto-refresh').checked;
   const provider = providers.find(item => item.id === editingID);
-  const savedCookie = provider?.has_refresh_cookie && provider.auth_mode === 'bearer' && $('provider-url').value.trim().replace(/\/$/, '') === provider.url && $('provider-user-id').value.trim() === (provider.user_id || '');
+  const sameAPI = (provider?.api_type || 'new-api') === $('api-type').value;
+  const savedCookie = sameAPI && provider?.has_refresh_cookie && provider.auth_mode === 'bearer' && $('provider-url').value.trim().replace(/\/$/, '') === provider.url && $('provider-user-id').value.trim() === (provider.user_id || '');
   $('bearer-refresh-settings').hidden = cookie;
   $('auto-refresh').disabled = cookie;
   $('refresh-cookie-field').hidden = !auto;
   $('refresh-cookie').disabled = !auto;
   $('refresh-cookie').required = auto && !savedCookie;
   $('refresh-cookie').placeholder = savedCookie ? 'Сохранена · оставьте пустым, чтобы не менять' : 'Cookie из запроса /api/user/auth/refresh';
-  const savedToken = provider?.has_token && $('auth-mode').value === provider.auth_mode && $('provider-url').value.trim().replace(/\/$/, '') === provider.url;
+  const savedToken = sameAPI && provider?.has_token && $('auth-mode').value === provider.auth_mode && $('provider-url').value.trim().replace(/\/$/, '') === provider.url;
   $('provider-token').required = !auto && !savedToken;
   $('token-label').textContent = cookie ? 'Cookie сессии' : 'Токен доступа';
-  $('token-hint').textContent = cookie
+  $('token-hint').textContent = anymodel
+    ? 'Скопируйте весь Request Headers → Cookie из запроса /api/me. Нужна cookie am_session; дополнительные cookies защиты сайта тоже можно оставить. При завершении сессии замените Cookie здесь.'
+    : cookie
     ? 'Скопируйте значение Cookie из Request Headers запроса /api/user/self.'
     : auto ? 'Необязательно: сервер получит Bearer-токен по HttpOnly cookie из запроса обновления.'
     : 'Скопируйте значение Authorization из запроса /api/user/self в DevTools → Network.';
@@ -171,6 +178,7 @@ function editProvider(id = '') {
   $('provider-form').reset();
   $('provider-name').value = provider?.name || '';
   $('provider-url').value = provider?.url || '';
+  $('api-type').value = provider?.api_type || 'new-api';
   $('auth-mode').value = provider?.auth_mode || 'bearer';
   $('provider-user-id').value = provider?.user_id || '';
   $('provider-currency').value = provider?.currency || '';
@@ -180,9 +188,27 @@ function editProvider(id = '') {
   $('provider-token').placeholder = provider?.has_token ? 'Сохранён · оставьте пустым, чтобы не менять' : '';
   $('editor-title').textContent = provider ? 'Настройки: ' + provider.name : 'Новый поставщик';
   $('delete-provider').hidden = !provider;
+  apiTypeHint();
+  render();
+}
+
+function apiTypeHint() {
+  const anymodel = $('api-type').value === 'anymodel';
+  $('api-type-hint').textContent = anymodel
+    ? 'Баланс в USD и остаток токенов AnyModel. Вход через Cookie личного кабинета.'
+    : 'Баланс аккаунта поставщика на базе New API. Вход через Bearer или Cookie.';
+  $('provider-url-hint').textContent = anymodel
+    ? 'Адрес сайта: https://anymodel.org, без /app/dashboard и /api/me.'
+    : 'Адрес сайта личного кабинета. Без /console и /api/user/self.';
+  $('new-api-user-settings').hidden = anymodel;
+  $('provider-user-id').disabled = anymodel;
+  $('auth-mode').disabled = anymodel;
+  if (anymodel) {
+    $('auth-mode').value = 'cookie';
+    if (!$('provider-url').value.trim()) $('provider-url').value = 'https://anymodel.org';
+  }
   authHint();
   currencyHint();
-  render();
 }
 
 async function refresh(id) {
@@ -244,6 +270,7 @@ $('add-from-balances').addEventListener('click', () => { editProvider(); showTab
 $('new-provider').addEventListener('click', () => { editProvider(); notice(); $('provider-name').focus(); });
 $('cancel-edit').addEventListener('click', () => { editProvider(); notice(); });
 $('auth-mode').addEventListener('change', authHint);
+$('api-type').addEventListener('change', apiTypeHint);
 $('auto-refresh').addEventListener('change', authHint);
 $('provider-url').addEventListener('input', authHint);
 $('provider-user-id').addEventListener('input', authHint);
@@ -254,8 +281,8 @@ $('provider-form').addEventListener('submit', async event => {
   $('save-provider').disabled = true;
   try {
     const {provider} = await api('/providers', 'PUT', {
-      id: editingID, name: $('provider-name').value, url: $('provider-url').value,
-      auth_mode: $('auth-mode').value, token: $('provider-token').value, user_id: $('provider-user-id').value,
+      id: editingID, name: $('provider-name').value, url: $('provider-url').value, api_type: $('api-type').value,
+      auth_mode: $('auth-mode').value, token: $('provider-token').value, user_id: $('api-type').value === 'anymodel' ? '' : $('provider-user-id').value,
       currency: $('provider-currency').value, custom_currency: $('custom-currency').value,
       auto_refresh: $('auth-mode').value === 'bearer' && $('auto-refresh').checked,
       refresh_cookie: $('auth-mode').value === 'bearer' && $('auto-refresh').checked ? $('refresh-cookie').value : '',

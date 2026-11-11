@@ -9,7 +9,7 @@
 </head>
 <body>
 <main>
-  <header><div><p class="eyebrow">CLIProxyAPI / NEW API</p><h1>Балансы поставщиков</h1><p class="muted">Проверяйте остаток на аккаунтах в одном месте.</p></div><button id="logout" hidden>Выйти</button></header>
+  <header><div><p class="eyebrow">CLIProxyAPI / NEW API / ANYMODEL</p><h1>Балансы поставщиков</h1><p class="muted">Проверяйте остаток на аккаунтах в одном месте.</p></div><button id="logout" hidden>Выйти</button></header>
   <p id="notice" role="status" aria-live="polite" hidden></p>
   <section id="login" class="panel login">
     <h2>Подключение к панели</h2><p class="muted">Введите ключ управления CLIProxyAPI. Он действует только в этой открытой вкладке.</p>
@@ -22,12 +22,14 @@
       <div id="cards" class="cards"></div>
     </section>
     <section id="settings" hidden>
-      <div class="section-heading"><div><h2>Настройки поставщиков</h2><p class="muted">URL сайта и данные входа в личный кабинет New API.</p></div></div>
+      <div class="section-heading"><div><h2>Настройки поставщиков</h2><p class="muted">URL сайта и данные входа в личный кабинет New API или AnyModel.</p></div></div>
       <div class="settings-grid"><section class="panel"><h3>Поставщики</h3><div id="provider-list"></div><button id="new-provider">+ Новый поставщик</button></section>
       <section class="panel"><h3 id="editor-title">Новый поставщик</h3>
         <form id="provider-form">
           <label for="provider-name">Имя поставщика</label><input id="provider-name" required maxlength="200" placeholder="Например, My Provider">
-          <label for="provider-url">URL сайта</label><input id="provider-url" type="url" required placeholder="https://provider.example"><p class="hint">Адрес сайта личного кабинета. Без /console и /api/user/self.</p>
+          <label for="api-type">Тип поставщика</label><select id="api-type"><option value="new-api">New API</option><option value="anymodel">AnyModel</option></select>
+          <p class="hint" id="api-type-hint">Баланс аккаунта поставщика на базе New API. Вход через Bearer или Cookie.</p>
+          <label for="provider-url">URL сайта</label><input id="provider-url" type="url" required placeholder="https://provider.example"><p class="hint" id="provider-url-hint">Адрес сайта личного кабинета. Без /console и /api/user/self.</p>
           <label for="provider-currency">Валюта баланса</label>
           <select id="provider-currency" aria-describedby="currency-hint">
             <option value="">Авто · из настроек поставщика</option>
@@ -101,12 +103,13 @@
             </div>
             <p id="token-expiry" class="hint" hidden></p>
           </div>
-          <label for="provider-user-id">New-Api-User <span class="muted">· необязательно</span></label><input id="provider-user-id" inputmode="numeric" pattern="[0-9]*" placeholder="ID пользователя из заголовков запроса">
+          <div id="new-api-user-settings"><label for="provider-user-id">New-Api-User <span class="muted">· необязательно</span></label><input id="provider-user-id" inputmode="numeric" pattern="[0-9]*" placeholder="ID пользователя из заголовков запроса">
           <p class="hint">Нужен некоторым старым версиям New API. Скопируйте New-Api-User из того же запроса.</p>
+          </div>
           <div class="form-actions"><button type="submit" class="primary" id="save-provider">Сохранить</button><button type="button" id="cancel-edit">Сбросить</button><button type="button" id="delete-provider" class="danger" hidden>Удалить</button></div>
         </form>
       </section></div>
-      <details class="panel help"><summary>Где взять токен или cookie</summary><ol><li>Войдите в личный кабинет поставщика и откройте инструменты разработчика (F12).</li><li>На вкладке Network обновите страницу и найдите запрос <code>/api/user/self</code>.</li><li>В Request Headers скопируйте значение <code>Authorization</code>. Если такого заголовка нет, выберите «Cookie сессии» и скопируйте значение <code>Cookie</code>.</li><li>Если есть заголовок <code>New-Api-User</code>, скопируйте его в одноимённое поле.</li></ol><p>Для автообновления Bearer включите переключатель, найдите в Network запрос <code>POST /api/user/auth/refresh</code> и скопируйте весь Request Headers → Cookie. Cookie <code>new_api_refresh</code> скрыта как HttpOnly, поэтому её часто нет в Application → Cookies или <code>document.cookie</code>. Публичная <code>new_api_has_session=1</code> только сообщает о наличии сессии и не может заменить refresh-cookie. Новый токен и ротация refresh-cookie сохраняются сервером автоматически.</p><p>Не публикуйте Cookie-заголовок в чате или тикетах: он даёт доступ к сессии. Поставщик должен поддерживать New API <code>POST /api/user/auth/refresh</code>; для других механизмов обновления нужна отдельная интеграция.</p><p>Данные сохраняются на сервере в файле с доступом только для владельца. Сохранённые токен и refresh-cookie не передаются обратно в интерфейс.</p></details>
+      <details class="panel help"><summary>Где взять токен или cookie</summary><ol><li>Войдите в личный кабинет поставщика и откройте инструменты разработчика (F12).</li><li>На вкладке Network обновите страницу и найдите запрос <code>/api/user/self</code> для New API или <code>/api/me</code> для AnyModel.</li><li>В Request Headers скопируйте значение <code>Authorization</code>. Если такого заголовка нет, выберите «Cookie сессии» и скопируйте значение <code>Cookie</code>.</li><li>Для New API, если есть заголовок <code>New-Api-User</code>, скопируйте его в одноимённое поле.</li></ol><p>Для AnyModel выберите тип поставщика «AnyModel» и скопируйте весь заголовок Cookie из запроса <code>/api/me</code>. Нужна непустая cookie <code>am_session</code>; дополнительные cookies защиты сайта можно оставить. На карточке появятся сумма в USD и остаток токенов. При истечении сессии войдите в AnyModel и замените Cookie в настройках.</p><p>Для автообновления Bearer New API включите переключатель, найдите в Network запрос <code>POST /api/user/auth/refresh</code> и скопируйте весь Request Headers → Cookie. Cookie <code>new_api_refresh</code> скрыта как HttpOnly, поэтому её часто нет в Application → Cookies или <code>document.cookie</code>. Публичная <code>new_api_has_session=1</code> только сообщает о наличии сессии и не может заменить refresh-cookie. Новый токен и ротация refresh-cookie сохраняются сервером автоматически.</p><p>Не публикуйте Cookie-заголовок в чате или тикетах: он даёт доступ к сессии. Поставщик должен поддерживать New API <code>POST /api/user/auth/refresh</code>; для других механизмов обновления нужна отдельная интеграция.</p><p>Данные сохраняются на сервере в файле с доступом только для владельца. Сохранённые токен и refresh-cookie не передаются обратно в интерфейс.</p></details>
     </section>
   </div>
   <footer>Балансы обновляются вручную. Сумма рассчитывается по настройкам поставщика. Для каждого поставщика можно выбрать своё обозначение валюты без конвертации суммы.</footer>

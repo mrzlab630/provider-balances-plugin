@@ -129,7 +129,7 @@ func dispatch(method string, raw []byte) (any, error) {
 			// Schema 6 returns JSON strings unchanged; the UI renders them as text.
 			"schema_version": 6,
 			"metadata": map[string]any{
-				"Name": pluginID, "Version": "0.3.0", "Author": "local",
+				"Name": pluginID, "Version": "0.4.0", "Author": "local",
 				"GitHubRepository": "https://github.com/router-for-me/CLIProxyAPI",
 				"ConfigFields": []any{map[string]string{
 					"Name": "data_file", "Type": "string",
@@ -147,7 +147,7 @@ func dispatch(method string, raw []byte) (any, error) {
 				map[string]string{"Method": "POST", "Path": apiPath + "/refresh"},
 			},
 			"resources": []any{
-				map[string]string{"Path": "/balances", "Menu": "Балансы поставщиков", "Description": "New API: баланс аккаунта по нажатию на кошелёк"},
+				map[string]string{"Path": "/balances", "Menu": "Балансы поставщиков", "Description": "New API и AnyModel: баланс аккаунта по нажатию на кошелёк"},
 				map[string]string{"Path": "/app.js"},
 				map[string]string{"Path": "/styles.css"},
 			},

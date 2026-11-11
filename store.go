@@ -21,6 +21,7 @@ type provider struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
 	URL            string `json:"url"`
+	APIType        string `json:"api_type"`
 	AuthMode       string `json:"auth_mode"`
 	Token          string `json:"token"`
 	UserID         string `json:"user_id"`
@@ -43,6 +44,7 @@ type providerView struct {
 	ID               string     `json:"id"`
 	Name             string     `json:"name"`
 	URL              string     `json:"url"`
+	APIType          string     `json:"api_type"`
 	AuthMode         string     `json:"auth_mode"`
 	HasToken         bool       `json:"has_token"`
 	UserID           string     `json:"user_id"`
@@ -87,6 +89,7 @@ func openStore(path string) (*providerStore, error) {
 		store.providers = []provider{}
 	}
 	for i := range store.providers {
+		store.providers[i].APIType = normalizedAPIType(store.providers[i].APIType)
 		if store.providers[i].AuthMode == "bearer" && store.providers[i].TokenExpiresAt == 0 {
 			store.providers[i].TokenExpiresAt = bearerExpiry(store.providers[i].Token)
 		}
@@ -128,7 +131,7 @@ func (store *providerStore) view(p provider) providerView {
 		}
 		display = &copy
 	}
-	return providerView{ID: p.ID, Name: p.Name, URL: p.URL, AuthMode: p.AuthMode, HasToken: p.Token != "", UserID: p.UserID, Currency: p.Currency, CustomCurrency: p.CustomCurrency, AutoRefresh: p.AutoRefresh, HasRefreshCookie: p.RefreshCookie != "", TokenExpiresAt: p.TokenExpiresAt, TokenRefreshedAt: p.TokenRefreshedAt, Balance: display, LastError: p.LastError, AttemptedAt: p.AttemptedAt, Refreshing: store.busy[p.ID]}
+	return providerView{ID: p.ID, Name: p.Name, URL: p.URL, APIType: normalizedAPIType(p.APIType), AuthMode: p.AuthMode, HasToken: p.Token != "", UserID: p.UserID, Currency: p.Currency, CustomCurrency: p.CustomCurrency, AutoRefresh: p.AutoRefresh, HasRefreshCookie: p.RefreshCookie != "", TokenExpiresAt: p.TokenExpiresAt, TokenRefreshedAt: p.TokenRefreshedAt, Balance: display, LastError: p.LastError, AttemptedAt: p.AttemptedAt, Refreshing: store.busy[p.ID]}
 }
 
 func (store *providerStore) list() []providerView {
@@ -148,6 +151,18 @@ func (store *providerStore) save(p provider) (providerView, error) {
 		return providerView{}, errors.New("Токен сейчас обновляется. Дождитесь завершения и повторите сохранение")
 	}
 	p.Name, p.Token, p.UserID = strings.TrimSpace(p.Name), strings.TrimSpace(p.Token), strings.TrimSpace(p.UserID)
+	p.APIType = normalizedAPIType(strings.TrimSpace(p.APIType))
+	if p.APIType != apiTypeNewAPI && p.APIType != apiTypeAnyModel {
+		return providerView{}, errors.New("Выберите тип API: New API или AnyModel")
+	}
+	if p.APIType == apiTypeAnyModel {
+		if p.AuthMode != "cookie" {
+			return providerView{}, errors.New("Для AnyModel нужна авторизация Cookie сессии")
+		}
+		if p.AutoRefresh || p.RefreshCookie != "" || p.UserID != "" {
+			return providerView{}, errors.New("Для AnyModel не используются New-Api-User и автообновление Bearer New API")
+		}
+	}
 	if p.AuthMode != "bearer" && p.AutoRefresh {
 		return providerView{}, errors.New("Автообновление доступно для Bearer-токена")
 	}
@@ -205,18 +220,19 @@ func (store *providerStore) save(p provider) (providerView, error) {
 	}
 	if index >= 0 {
 		old := store.providers[index]
-		if p.Token == "" && p.URL == old.URL && p.AuthMode == old.AuthMode {
+		sameAPI := p.APIType == normalizedAPIType(old.APIType)
+		if sameAPI && p.Token == "" && p.URL == old.URL && p.AuthMode == old.AuthMode {
 			p.Token = old.Token
 		}
-		if p.AutoRefresh && p.RefreshCookie == "" && old.AuthMode == "bearer" && p.URL == old.URL && p.UserID == old.UserID {
+		if sameAPI && p.AutoRefresh && p.RefreshCookie == "" && old.AuthMode == "bearer" && p.URL == old.URL && p.UserID == old.UserID {
 			p.RefreshCookie = old.RefreshCookie
 			p.RefreshCookieHeader = old.RefreshCookieHeader
 		}
-		if p.Token == old.Token && p.URL == old.URL && p.AuthMode == old.AuthMode {
+		if sameAPI && p.Token == old.Token && p.URL == old.URL && p.AuthMode == old.AuthMode {
 			p.TokenRefreshedAt = old.TokenRefreshedAt
 			p.TokenExpiresAt = old.TokenExpiresAt
 		}
-		if p.URL == old.URL && p.Token == old.Token && p.UserID == old.UserID && p.AuthMode == old.AuthMode {
+		if sameAPI && p.URL == old.URL && p.Token == old.Token && p.UserID == old.UserID && p.AuthMode == old.AuthMode {
 			p.Balance, p.LastError, p.AttemptedAt = old.Balance, old.LastError, old.AttemptedAt
 		}
 	} else {
@@ -241,6 +257,11 @@ func (store *providerStore) save(p provider) (providerView, error) {
 	}
 	if p.Token == "" && !p.AutoRefresh {
 		return providerView{}, errors.New("Укажите токен/cookie. При изменении URL или типа авторизации введите его заново")
+	}
+	if p.APIType == apiTypeAnyModel {
+		if err := validateAnyModelCookie(p.Token); err != nil {
+			return providerView{}, err
+		}
 	}
 	next := slices.Clone(store.providers)
 	if index < 0 {

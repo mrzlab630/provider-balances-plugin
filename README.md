@@ -1,13 +1,46 @@
 # Provider Balances for CLIProxyAPI
 
-A local C ABI plugin with a Russian-language page for New API account balances.
-Version 0.3.0, verified against CLIProxyAPI 8.0.31.
+A local C ABI plugin with a Russian-language page for New API and AnyModel account balances.
+Version 0.4.0, verified against CLIProxyAPI 8.0.31.
 
 Open [Provider balances](https://ai.yokinaboy.com/v0/resource/plugins/provider-balances/balances).
 Enter the CLIProxyAPI management key, select Settings, and add a provider name,
 the provider website URL, and a dashboard credential. Click the wallet on the
 Balances tab to refresh that provider. The page asks for the management key again
 after a reload; it keeps the key only in browser memory.
+
+Select the provider type when adding an account. Existing records without an
+api_type field remain New API providers; their saved credentials and balances
+continue to work. Changing a provider's API type requires re-entering its
+credential and clears the cached balance.
+
+## AnyModel
+
+Select **AnyModel**, use https://anymodel.org as the website URL, and paste the
+complete Cookie request header from GET /api/me in the signed-in dashboard
+(DevTools → Network). It must include a nonempty am_session cookie. Auxiliary
+cookies used by the site's browser protection can be included in the same
+header. The optional Cookie: prefix is accepted.
+
+The plugin reads balanceUsd directly as USD and balance as the remaining integer
+token count. Both appear on the card: the money amount first and a separate
+token line below it. No fixed token-to-dollar ratio is assumed, and the debt
+field is not subtracted from either returned balance. Both values must be
+present; zero and negative balances are supported. Only these two balance
+fields are decoded from the response: user details and model API keys returned
+by /api/me are never saved or returned by the plugin.
+
+Cookie authentication is required. New-Api-User and New API's Bearer renewal
+settings are hidden and are not used for AnyModel. There is no confirmed
+AnyModel session-renewal integration: after expiry or revocation, sign in again
+and replace the saved Cookie. Errors preserve the last successful USD and token
+balances, including their timestamp. Redirects are rejected and response bodies
+are never included in error messages.
+
+The management API uses api_type: "anymodel" (or "new-api" for New API).
+Successful AnyModel balances contain amount, unit: "USD", and tokens; quota
+mirrors the raw token count. Manual currency selection still changes only the
+money label and never the token count.
 
 ## New API authentication
 
@@ -68,7 +101,7 @@ token.
 
 ## API and currency
 
-The plugin reads data.quota from GET /api/user/self, using the selected dashboard
+For New API, the plugin reads data.quota from GET /api/user/self, using the selected dashboard
 credential. It reads the public GET /api/status without credentials to obtain
 quota_per_unit and currency display settings. The default is Auto: use the
 provider's reported USD, CNY, custom currency, or token display. Missing or unknown
@@ -120,8 +153,9 @@ Configuration block under plugins.configs:
 The server stores credentials in this file as plaintext with mode 0600; newly
 created parent directories have mode 0700. Back up this file as a secret.
 List/save API responses expose only has_token, never the stored credential.
-Blank credentials in the editor preserve the saved value when the URL and
-authentication mode remain the same. A new URL requires re-entering credentials.
+Blank credentials in the editor preserve the saved value when the provider type,
+URL and authentication mode remain the same. A new URL or API type requires
+re-entering credentials.
 
 The page and its static assets are public. Provider data and mutations are
 protected by the host's management authentication. No provider data is embedded
@@ -147,7 +181,7 @@ From this directory:
     go build -buildmode=c-shared -o /tmp/provider-balances-v0.1.0.so .
 
 The staging/installed filename is retained for compatibility; the plugin reports
-version 0.3.0. To update this existing installation after verification:
+version 0.4.0. To update this existing installation after verification:
 
     python3 update-local.py
     systemctl --user restart cliproxyapi.service
@@ -163,3 +197,13 @@ before expiry, one authorization retry, cookie rotation, secret masking,
 failure handling and concurrent requests. The end-to-end provider was a local New API
 test server with known quota, not a real provider account. Provider-specific
 forks and anti-bot protection can require additional compatibility work.
+
+AnyModel tests use synthetic responses and cookies. They cover both balances,
+zero and negative amounts, direct USD mapping without recalculation, session
+failures, invalid responses, redirect rejection, secret masking, persistence,
+provider-type changes, and backward compatibility with New API records.
+The version 0.4.0 shared library was also loaded into an isolated CLIProxyAPI
+8.0.31 instance and checked in Chromium on desktop and mobile viewports,
+including adding a provider, masked credentials, blank saves, reloading,
+expired-session errors, zero balances, and both displayed amounts.
+No real AnyModel account was contacted by these tests.

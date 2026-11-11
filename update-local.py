@@ -37,9 +37,9 @@ try:
 finally:
     if staged is not None:
         staged.unlink(missing_ok=True)
-record = {'version': '0.3.0', 'plugin': str(target),
+record = {'version': '0.4.0', 'plugin': str(target),
           'plugin_before_sha256': before_sha, 'plugin_after_sha256': digest(target),
           'data_backup_sha256': data_sha, 'configuration_changed': False}
 (backup / 'installation.json').write_text(json.dumps(record, indent=2) + '\n')
-print('Installed provider-balances 0.3.0; restart cliproxyapi.service to load it')
+print('Installed provider-balances 0.4.0; restart cliproxyapi.service to load it')
 print('Backup: ' + str(backup))

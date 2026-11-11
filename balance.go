@@ -16,6 +16,7 @@ type balance struct {
 	Quota       float64   `json:"quota"`
 	Amount      float64   `json:"amount"`
 	Unit        string    `json:"unit"`
+	Tokens      *int64    `json:"tokens,omitempty"`
 	DisplayUnit string    `json:"display_unit,omitempty"`
 	Warning     string    `json:"warning,omitempty"`
 	CheckedAt   time.Time `json:"checked_at"`
@@ -52,6 +53,9 @@ func normalizeURL(raw string) (string, error) {
 }
 
 func fetchBalance(ctx context.Context, provider provider) (*balance, error) {
+	if provider.APIType == apiTypeAnyModel {
+		return fetchAnyModelBalance(ctx, provider)
+	}
 	client := &http.Client{
 		Timeout:       20 * time.Second,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse },

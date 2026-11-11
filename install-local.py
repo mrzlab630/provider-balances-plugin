@@ -50,5 +50,5 @@ record = {'config': str(config), 'plugin': str(target),
           'config_after_sha256': hashlib.sha256(updated).hexdigest(),
           'plugin_sha256': hashlib.sha256(target.read_bytes()).hexdigest()}
 (backup / 'installation.json').write_text(json.dumps(record, indent=2) + '\n')
-print('Installed provider-balances 0.1.0')
+print('Installed provider-balances 0.4.0')
 print('Backup: ' + str(backup))

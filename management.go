@@ -75,7 +75,7 @@ func handleManagement(store *providerStore, req managementRequest) managementRes
 		if json.Unmarshal(req.Body, &input) != nil {
 			return jsonResponse(400, map[string]string{"error": "Некорректные настройки поставщика"})
 		}
-		view, err := store.save(provider{ID: input.ID, Name: input.Name, URL: input.URL, Token: input.Token, AuthMode: input.AuthMode, UserID: input.UserID, Currency: input.Currency, CustomCurrency: input.CustomCurrency, AutoRefresh: input.AutoRefresh, RefreshCookie: input.RefreshCookie})
+		view, err := store.save(provider{ID: input.ID, Name: input.Name, URL: input.URL, APIType: input.APIType, Token: input.Token, AuthMode: input.AuthMode, UserID: input.UserID, Currency: input.Currency, CustomCurrency: input.CustomCurrency, AutoRefresh: input.AutoRefresh, RefreshCookie: input.RefreshCookie})
 		if err != nil {
 			return jsonResponse(400, map[string]string{"error": err.Error()})
 		}
