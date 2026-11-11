@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Балансы поставщиков · CLIProxyAPI</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<main>
+  <header><div><p class="eyebrow">CLIProxyAPI / NEW API</p><h1>Балансы поставщиков</h1><p class="muted">Проверяйте остаток на аккаунтах в одном месте.</p></div><button id="logout" hidden>Выйти</button></header>
+  <p id="notice" role="status" aria-live="polite" hidden></p>
+  <section id="login" class="panel login">
+    <h2>Подключение к панели</h2><p class="muted">Введите ключ управления CLIProxyAPI. Он действует только в этой открытой вкладке.</p>
+    <form id="login-form"><label for="management-key">Ключ управления</label><input id="management-key" type="password" autocomplete="off" required><button class="primary" type="submit">Подключиться</button></form>
+  </section>
+  <div id="app" hidden>
+    <nav aria-label="Разделы"><button id="balances-tab" class="active" aria-current="page">Балансы</button><button id="settings-tab">Настройки</button></nav>
+    <section id="balances">
+      <div class="section-heading"><div><h2>Мои поставщики</h2><p class="muted">Нажмите на кошелёк, чтобы запросить актуальный баланс.</p></div><button id="add-from-balances" class="primary">+ Добавить поставщика</button></div>
+      <div id="cards" class="cards"></div>
+    </section>
+    <section id="settings" hidden>
+      <div class="section-heading"><div><h2>Настройки поставщиков</h2><p class="muted">URL сайта и данные входа в личный кабинет New API.</p></div></div>
+      <div class="settings-grid"><section class="panel"><h3>Поставщики</h3><div id="provider-list"></div><button id="new-provider">+ Новый поставщик</button></section>
+      <section class="panel"><h3 id="editor-title">Новый поставщик</h3>
+        <form id="provider-form">
+          <label for="provider-name">Имя поставщика</label><input id="provider-name" required maxlength="200" placeholder="Например, My Provider">
+          <label for="provider-url">URL сайта</label><input id="provider-url" type="url" required placeholder="https://provider.example"><p class="hint">Адрес сайта личного кабинета. Без /console и /api/user/self.</p>
+          <label for="provider-currency">Валюта баланса</label>
+          <select id="provider-currency" aria-describedby="currency-hint">
+            <option value="">Авто · из настроек поставщика</option>
+            <optgroup label="Обычные валюты">
+              <option value="USD" data-symbol="$">$ · USD · Доллар США</option>
+              <option value="EUR" data-symbol="€">€ · EUR · Евро</option>
+              <option value="RUB" data-symbol="₽">₽ · RUB · Российский рубль</option>
+              <option value="CNY" data-symbol="¥">¥ · CNY · Китайский юань</option>
+              <option value="GBP" data-symbol="£">£ · GBP · Фунт стерлингов</option>
+              <option value="JPY" data-symbol="¥">¥ · JPY · Японская иена</option>
+              <option value="KRW" data-symbol="₩">₩ · KRW · Южнокорейская вона</option>
+              <option value="INR" data-symbol="₹">₹ · INR · Индийская рупия</option>
+              <option value="UAH" data-symbol="₴">₴ · UAH · Украинская гривна</option>
+              <option value="KZT" data-symbol="₸">₸ · KZT · Казахстанский тенге</option>
+              <option value="BYN" data-symbol="Br">Br · BYN · Белорусский рубль</option>
+              <option value="TRY" data-symbol="₺">₺ · TRY · Турецкая лира</option>
+              <option value="AED" data-symbol="د.إ">د.إ · AED · Дирхам ОАЭ</option>
+              <option value="SAR" data-symbol="﷼">﷼ · SAR · Саудовский риял</option>
+              <option value="ILS" data-symbol="₪">₪ · ILS · Израильский шекель</option>
+              <option value="CHF" data-symbol="Fr">Fr · CHF · Швейцарский франк</option>
+              <option value="CAD" data-symbol="C$">C$ · CAD · Канадский доллар</option>
+              <option value="AUD" data-symbol="A$">A$ · AUD · Австралийский доллар</option>
+              <option value="NZD" data-symbol="NZ$">NZ$ · NZD · Новозеландский доллар</option>
+              <option value="SGD" data-symbol="S$">S$ · SGD · Сингапурский доллар</option>
+              <option value="HKD" data-symbol="HK$">HK$ · HKD · Гонконгский доллар</option>
+              <option value="TWD" data-symbol="NT$">NT$ · TWD · Новый тайваньский доллар</option>
+              <option value="VND" data-symbol="₫">₫ · VND · Вьетнамский донг</option>
+              <option value="THB" data-symbol="฿">฿ · THB · Тайский бат</option>
+              <option value="IDR" data-symbol="Rp">Rp · IDR · Индонезийская рупия</option>
+              <option value="MYR" data-symbol="RM">RM · MYR · Малайзийский ринггит</option>
+              <option value="PHP" data-symbol="₱">₱ · PHP · Филиппинское песо</option>
+              <option value="BRL" data-symbol="R$">R$ · BRL · Бразильский реал</option>
+              <option value="MXN" data-symbol="Mex$">Mex$ · MXN · Мексиканское песо</option>
+              <option value="PLN" data-symbol="zł">zł · PLN · Польский злотый</option>
+              <option value="CZK" data-symbol="Kč">Kč · CZK · Чешская крона</option>
+              <option value="SEK" data-symbol="kr">kr · SEK · Шведская крона</option>
+              <option value="NOK" data-symbol="kr">kr · NOK · Норвежская крона</option>
+              <option value="DKK" data-symbol="kr">kr · DKK · Датская крона</option>
+              <option value="ZAR" data-symbol="R">R · ZAR · Южноафриканский рэнд</option>
+            </optgroup>
+            <optgroup label="Криптовалюты и стейблкоины" data-digits="8">
+              <option value="USDT" data-symbol="₮">₮ · USDT · Tether</option>
+              <option value="USDC" data-symbol="USDC">USDC · USD Coin</option>
+              <option value="DAI" data-symbol="DAI">DAI · Dai</option>
+              <option value="BTC" data-symbol="₿">₿ · BTC · Bitcoin</option>
+              <option value="ETH" data-symbol="Ξ">Ξ · ETH · Ethereum</option>
+              <option value="TON" data-symbol="TON">TON · Toncoin</option>
+              <option value="SOL" data-symbol="SOL">SOL · Solana</option>
+              <option value="BNB" data-symbol="BNB">BNB · BNB</option>
+              <option value="TRX" data-symbol="TRX">TRX · TRON</option>
+              <option value="XRP" data-symbol="XRP">XRP · XRP</option>
+              <option value="LTC" data-symbol="Ł">Ł · LTC · Litecoin</option>
+              <option value="DOGE" data-symbol="Ð">Ð · DOGE · Dogecoin</option>
+              <option value="XMR" data-symbol="ɱ">ɱ · XMR · Monero</option>
+              <option value="BCH" data-symbol="BCH">BCH · Bitcoin Cash</option>
+            </optgroup>
+            <option value="CUSTOM">Своя валюта…</option>
+          </select>
+          <p class="hint" id="currency-hint">В режиме «Авто» используется валюта поставщика. Если она не указана, показываются единицы баланса.</p>
+          <div id="custom-currency-field" hidden><label for="custom-currency">Своя валюта · обозначение</label><input id="custom-currency" maxlength="24" placeholder="Например, CR, 💎 или баллы" autocomplete="off" spellcheck="false" disabled><p class="hint">До 24 символов: знак, код, слово или эмодзи.</p></div>
+          <label for="auth-mode">Способ авторизации</label><select id="auth-mode"><option value="bearer">Authorization · Bearer-токен</option><option value="cookie">Cookie сессии</option></select>
+          <label for="provider-token" id="token-label">Токен доступа</label><input id="provider-token" type="password" autocomplete="new-password" maxlength="16384" spellcheck="false"><p class="hint" id="token-hint">Скопируйте значение Authorization из запроса /api/user/self в DevTools → Network.</p>
+          <div id="bearer-refresh-settings">
+            <label class="checkbox-label" for="auto-refresh"><input id="auto-refresh" type="checkbox">Автоматически обновлять Bearer-токен</label>
+            <p class="hint">Для сессий New API с cookie new_api_refresh. При запросе баланса сервер получит новый токен, если старый истёк или скоро истечёт.</p>
+            <div id="refresh-cookie-field" hidden>
+              <label for="refresh-cookie">Cookie для обновления · new_api_refresh</label>
+              <input id="refresh-cookie" type="password" autocomplete="new-password" maxlength="16384" spellcheck="false" aria-describedby="refresh-cookie-hint" disabled>
+              <p class="hint" id="refresh-cookie-hint">Cookie new_api_refresh имеет флаг HttpOnly и путь /api/user/auth, поэтому её может не быть в обычном списке Cookies и document.cookie. В DevTools → Network найдите POST /api/user/auth/refresh и скопируйте весь Request Headers → Cookie. Токен доступа можно оставить пустым — сервер получит его сам. Сохранённая cookie не передаётся обратно в интерфейс.</p>
+              <p class="hint">Используйте отдельную сессию входа для плагина: refresh-cookie меняется при обновлении, и параллельное использование этой сессии в браузере может отозвать доступ. Если сессия истечёт или будет закрыта, понадобится новая cookie.</p>
+            </div>
+            <p id="token-expiry" class="hint" hidden></p>
+          </div>
+          <label for="provider-user-id">New-Api-User <span class="muted">· необязательно</span></label><input id="provider-user-id" inputmode="numeric" pattern="[0-9]*" placeholder="ID пользователя из заголовков запроса">
+          <p class="hint">Нужен некоторым старым версиям New API. Скопируйте New-Api-User из того же запроса.</p>
+          <div class="form-actions"><button type="submit" class="primary" id="save-provider">Сохранить</button><button type="button" id="cancel-edit">Сбросить</button><button type="button" id="delete-provider" class="danger" hidden>Удалить</button></div>
+        </form>
+      </section></div>
+      <details class="panel help"><summary>Где взять токен или cookie</summary><ol><li>Войдите в личный кабинет поставщика и откройте инструменты разработчика (F12).</li><li>На вкладке Network обновите страницу и найдите запрос <code>/api/user/self</code>.</li><li>В Request Headers скопируйте значение <code>Authorization</code>. Если такого заголовка нет, выберите «Cookie сессии» и скопируйте значение <code>Cookie</code>.</li><li>Если есть заголовок <code>New-Api-User</code>, скопируйте его в одноимённое поле.</li></ol><p>Для автообновления Bearer включите переключатель, найдите в Network запрос <code>POST /api/user/auth/refresh</code> и скопируйте весь Request Headers → Cookie. Cookie <code>new_api_refresh</code> скрыта как HttpOnly, поэтому её часто нет в Application → Cookies или <code>document.cookie</code>. Публичная <code>new_api_has_session=1</code> только сообщает о наличии сессии и не может заменить refresh-cookie. Новый токен и ротация refresh-cookie сохраняются сервером автоматически.</p><p>Не публикуйте Cookie-заголовок в чате или тикетах: он даёт доступ к сессии. Поставщик должен поддерживать New API <code>POST /api/user/auth/refresh</code>; для других механизмов обновления нужна отдельная интеграция.</p><p>Данные сохраняются на сервере в файле с доступом только для владельца. Сохранённые токен и refresh-cookie не передаются обратно в интерфейс.</p></details>
+    </section>
+  </div>
+  <footer>Балансы обновляются вручную. Сумма рассчитывается по настройкам поставщика. Для каждого поставщика можно выбрать своё обозначение валюты без конвертации суммы.</footer>
+</main>
+<dialog id="delete-dialog"><form method="dialog"><h2>Удалить поставщика?</h2><p id="delete-message"></p><div class="form-actions"><button value="cancel">Отмена</button><button value="delete" class="danger">Удалить</button></div></form></dialog>
+</body>
+</html>
