@@ -31,6 +31,8 @@ import (
 )
 
 const pluginID = "provider-balances"
+const pluginVersion = "0.4.1"
+const pluginRepository = "https://github.com/mrzlab630/provider-balances-plugin"
 const apiPath = "/v0/management/provider-balances"
 const resourcePath = "/v0/resource/plugins/provider-balances"
 
@@ -129,8 +131,8 @@ func dispatch(method string, raw []byte) (any, error) {
 			// Schema 6 returns JSON strings unchanged; the UI renders them as text.
 			"schema_version": 6,
 			"metadata": map[string]any{
-				"Name": pluginID, "Version": "0.4.0", "Author": "local",
-				"GitHubRepository": "https://github.com/router-for-me/CLIProxyAPI",
+				"Name": pluginID, "Version": pluginVersion, "Author": "local",
+				"GitHubRepository": pluginRepository,
 				"ConfigFields": []any{map[string]string{
 					"Name": "data_file", "Type": "string",
 					"Description": "Server file for provider credentials and saved balances. Default: data/provider-balances.json",

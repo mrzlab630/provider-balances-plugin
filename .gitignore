@@ -8,6 +8,10 @@
 *.jks
 *.keystore
 .aws/
+.ssh/
+.netrc
+id_rsa*
+id_ed25519*
 .secrets/
 /secrets/
 *credentials*.json
@@ -15,6 +19,9 @@
 cookies*.txt
 tokens*.txt
 *.har
+*.db
+*.sqlite
+*.sqlite3
 /data/
 /auths/
 /config.yaml

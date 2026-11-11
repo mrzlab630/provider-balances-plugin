@@ -1,9 +1,13 @@
 # Provider Balances for CLIProxyAPI
 
-A local C ABI plugin with a Russian-language page for New API and AnyModel account balances.
-Version 0.4.0, verified against CLIProxyAPI 8.0.31.
+A C ABI plugin with a Russian-language page for New API and AnyModel account balances.
+Version **0.4.1**, tested with CLIProxyAPI **8.0.31** on Linux amd64.
 
-Open [Provider balances](https://ai.yokinaboy.com/v0/resource/plugins/provider-balances/balances).
+Source: [mrzlab630/provider-balances-plugin](https://github.com/mrzlab630/provider-balances-plugin).
+See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+After installation, open `/v0/resource/plugins/provider-balances/balances`
+on your CLIProxyAPI server. The page is also registered in the host resource menu.
 Enter the CLIProxyAPI management key, select Settings, and add a provider name,
 the provider website URL, and a dashboard credential. Click the wallet on the
 Balances tab to refresh that provider. The page asks for the management key again
@@ -101,9 +105,9 @@ token.
 
 ## API and currency
 
-For New API, the plugin reads data.quota from GET /api/user/self, using the selected dashboard
-credential. It reads the public GET /api/status without credentials to obtain
-quota_per_unit and currency display settings. The default is Auto: use the
+For New API, the plugin reads data.quota from GET /api/user/self, using the
+selected dashboard credential. It reads the public GET /api/status without
+credentials to obtain quota_per_unit and currency display settings. The default is Auto: use the
 provider's reported USD, CNY, custom currency, or token display. Missing or unknown
 currency settings never assume USD. If quota_per_unit is available without a
 known currency, the plugin shows generic balance units; if the conversion factor
@@ -136,22 +140,88 @@ finish after an edit or removal cannot overwrite the newer settings.
 
 ## Installation
 
-The current deployment uses:
+Requires a CLIProxyAPI build with C ABI plugin support. Version 8.0.31 on
+Linux amd64 has been verified. Building requires Go 1.26+, CGO and a C compiler;
+Node.js is used only to check the embedded JavaScript.
 
-- Active config: ../.video-gateway-switch/config-core-8318.yaml
-- Library: ../plugins/linux/amd64/provider-balances-v0.1.0.so
-  (the installed filename is retained to avoid duplicate plugin discovery)
-- Data: ../data/provider-balances.json, created on first provider save
-- Service: systemctl --user restart cliproxyapi.service
+Clone and build:
 
-Configuration block under plugins.configs:
+```sh
+git clone https://github.com/mrzlab630/provider-balances-plugin.git
+cd provider-balances-plugin
+go test -race ./...
+node --check web/app.js
+go build -buildmode=c-shared -o /tmp/provider-balances-v0.1.0.so .
+```
 
-    provider-balances:
-        enabled: true
-        data_file: /home/630monster/cliproxyapi/data/provider-balances.json
+The UI is embedded in the library; no frontend dependency installation is
+needed. The `v0.1.0` library filename is retained for existing installations;
+the plugin metadata reports **0.4.1**. Keep only one copy of the plugin in the
+host's discovery directory.
 
-The server stores credentials in this file as plaintext with mode 0600; newly
-created parent directories have mode 0700. Back up this file as a secret.
+For a first installation, copy the built library to
+`plugins/linux/amd64/provider-balances-v0.1.0.so` inside the CLIProxyAPI
+installation. Enable the plugin in the **active** host configuration, preserving
+other plugin entries and replacing the example absolute data path:
+
+```yaml
+plugins:
+    enabled: true
+    dir: plugins
+    configs:
+        provider-balances:
+            enabled: true
+            data_file: /path/to/cliproxyapi/data/provider-balances.json
+```
+
+Restart your CLIProxyAPI process or service after installing the library. For
+example, if it is managed by a user service named `cliproxyapi.service`:
+
+```sh
+systemctl --user restart cliproxyapi.service
+```
+
+Configure the host's management authentication according to your CLIProxyAPI
+installation. Use that management key to sign in to the plugin page.
+
+### Optional installation helpers
+
+The helper scripts accept explicit paths, so the repository and the CLIProxyAPI
+installation do not have to share a parent directory. `--root` defaults to the
+parent of the repository and `--source` defaults to the build path shown above.
+
+For a first installation, `install-local.py` requires Python 3 and PyYAML. It
+expects an existing enabled `plugins` block, `dir: plugins`, and a `configs`
+mapping using the four-space indentation shown above. It backs up the active
+configuration, adds only the plugin entry and installs the library:
+
+```sh
+python3 install-local.py --root /path/to/cliproxyapi --config /path/to/active-config.yaml
+```
+
+`--config` defaults to `ROOT/config.yaml`. For a different configuration layout,
+use the manual installation steps instead of this helper.
+
+For an existing installation, build the updated library and run:
+
+```sh
+python3 update-local.py --root /path/to/cliproxyapi
+systemctl --user restart cliproxyapi.service
+```
+
+The updater needs only Python's standard library. It creates a dated backup
+under `ROOT/operations/`, including the existing library and provider data, then
+atomically replaces the library. It does not change the host configuration or
+provider data. The service restart is a separate step.
+
+Never overwrite a loaded shared library in place. Stage a new file and
+atomically rename it, or stop the host before replacing the library.
+
+## Data and access
+
+The server stores provider credentials and cached balances in the configured
+`data_file`. Credentials are plaintext, with file mode 0600; newly created
+parent directories have mode 0700. Back up this file as a secret.
 List/save API responses expose only has_token, never the stored credential.
 Blank credentials in the editor preserve the saved value when the provider type,
 URL and authentication mode remain the same. A new URL or API type requires
@@ -161,34 +231,28 @@ The page and its static assets are public. Provider data and mutations are
 protected by the host's management authentication. No provider data is embedded
 in the public page.
 
-The first installation made a backup in
-../operations/provider-balances-20261019T130947Z/. To disable the plugin, set
-plugins.configs.provider-balances.enabled to false in the active configuration
-and restart the service. Do not restore the entire old config after unrelated
-configuration changes.
+To disable the plugin, set `plugins.configs.provider-balances.enabled` to
+`false` in the active host configuration and restart the service. Restore a
+saved library to roll back a plugin update; keep the current host configuration
+when it contains unrelated changes.
 
-The plugin advertises its page through the standard resource menu registration.
-The direct URL works independently of management-panel menu support. Metadata
-links to the host CLIProxyAPI project to satisfy the host's required repository
-field; this local plugin has not been published to that repository.
+The direct page URL works independently of management-panel menu support.
+Plugin metadata links to this plugin's own GitHub repository.
 
-## Build and verify
+Runtime data, credentials, local configurations, logs, backups, HAR captures,
+compiled libraries and caches are excluded by `.gitignore`. Keep the actual
+provider data outside the source checkout. Tests use synthetic credentials and
+responses; real provider credentials are not needed to run them.
 
-From this directory:
+## Verification
 
-    go test -race ./...
-    node --check web/app.js
-    go build -buildmode=c-shared -o /tmp/provider-balances-v0.1.0.so .
+From the repository directory:
 
-The staging/installed filename is retained for compatibility; the plugin reports
-version 0.4.0. To update this existing installation after verification:
-
-    python3 update-local.py
-    systemctl --user restart cliproxyapi.service
-
-Requires Go 1.26+, CGO and a C compiler. The UI is embedded in the library.
-Stop or restart the host when replacing an installed shared library; do not
-overwrite a loaded library in place. Stage a new file and atomically rename it.
+```sh
+go test -race ./...
+node --check web/app.js
+go build -buildmode=c-shared -o /tmp/provider-balances-v0.1.0.so .
+```
 
 Validation completed: race-enabled tests, shared-library build, integration with
 the installed CLIProxyAPI binary, protected API, provider CRUD, balance refresh,
@@ -202,8 +266,8 @@ AnyModel tests use synthetic responses and cookies. They cover both balances,
 zero and negative amounts, direct USD mapping without recalculation, session
 failures, invalid responses, redirect rejection, secret masking, persistence,
 provider-type changes, and backward compatibility with New API records.
-The version 0.4.0 shared library was also loaded into an isolated CLIProxyAPI
-8.0.31 instance and checked in Chromium on desktop and mobile viewports,
+The shared library was also loaded into an isolated CLIProxyAPI 8.0.31 instance
+and checked in Chromium on desktop and mobile viewports,
 including adding a provider, masked credentials, blank saves, reloading,
 expired-session errors, zero balances, and both displayed amounts.
 No real AnyModel account was contacted by these tests.

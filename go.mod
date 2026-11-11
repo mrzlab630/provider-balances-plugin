@@ -1,4 +1,4 @@
-module local/cliproxyapi/provider-balances
+module github.com/mrzlab630/provider-balances-plugin
 
 go 1.26
 
